@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaidChange — Change-Order-to-Cash Ledger (Demo)</title>
+<style>
+  :root{
+    --navy:#12263a; --navy2:#1b3a55; --ink:#1c2733; --mut:#5b6b7a; --line:#d9e1e8;
+    --bg:#eef2f5; --card:#ffffff; --accent:#0f7a4d; --accent2:#0b5cad;
+    --red:#c0392b; --redbg:#fdecea; --amber:#a86e00; --amberbg:#fdf3e0;
+    --green:#0f7a4d; --greenbg:#e7f5ee; --greybg:#eef1f4;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); font-size:14px;}
+  header{background:var(--navy); color:#fff; padding:14px 28px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;}
+  header .logo{font-size:20px; font-weight:700; letter-spacing:.3px;}
+  header .logo span{color:#7fd1a8;}
+  header .sub{color:#b9c9d6; font-size:12.5px;}
+  header .demo-badge{margin-left:auto; background:#f5b301; color:#231a00; font-weight:700; font-size:12px; padding:5px 12px; border-radius:20px; text-transform:uppercase; letter-spacing:.6px;}
+  .companybar{background:var(--navy2); color:#dbe7f1; padding:8px 28px; font-size:13px; display:flex; gap:24px; flex-wrap:wrap;}
+  .companybar b{color:#fff;}
+  nav{display:flex; gap:4px; background:#fff; border-bottom:1px solid var(--line); padding:0 20px; position:sticky; top:0; z-index:5; flex-wrap:wrap;}
+  nav button{background:none; border:none; border-bottom:3px solid transparent; padding:13px 16px; font-size:14px; font-weight:600; color:var(--mut); cursor:pointer; min-height:48px;}
+  nav button:hover{color:var(--ink);}
+  nav button.active{color:var(--navy); border-bottom-color:var(--accent);}
+  main{max-width:1180px; margin:0 auto; padding:24px 20px 40px;}
+  section.panel{display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:18px; margin-bottom:4px; color:var(--navy);}
+  .pdesc{color:var(--mut); margin-bottom:18px; font-size:13px;}
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:22px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 20px;}
+  .card .lbl{font-size:12px; text-transform:uppercase; letter-spacing:.7px; color:var(--mut); font-weight:700;}
+  .card .big{font-size:28px; font-weight:800; margin:6px 0 2px; color:var(--navy);}
+  .card .note{font-size:12.5px; color:var(--mut);}
+  .card.risk .big{color:var(--red);}
+  .card.good .big{color:var(--green);}
+  .riskbanner{background:var(--redbg); border:1px solid #f0c6c0; color:#7c2318; border-radius:10px; padding:14px 18px; margin-bottom:22px; font-size:13.5px;}
+  .riskbanner b{color:var(--red);}
+  .statstrip{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 20px; margin-bottom:22px;}
+  .statstrip h3{font-size:14px; color:var(--navy); margin-bottom:8px;}
+  .statstrip li{margin-left:18px; margin-bottom:4px; color:var(--ink); font-size:13.5px;}
+  .statstrip .src{color:var(--mut); font-size:12px; margin-top:6px;}
+  table{width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  th{background:var(--greybg); text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--mut); padding:10px 12px;}
+  td{padding:10px 12px; border-top:1px solid var(--line); vertical-align:top; font-size:13.5px;}
+  .pill{display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:700; white-space:nowrap;}
+  .pill.priced{background:#e8eefc; color:#274b9f;}
+  .pill.submitted{background:var(--amberbg); color:var(--amber);}
+  .pill.approved{background:#e6f4ea; color:#1e7a34;}
+  .pill.billed{background:#f3e8fd; color:#6a1b9a;}
+  .pill.paid{background:var(--greenbg); color:var(--green);}
+  .stalled{color:var(--red); font-weight:700;}
+  .btn{background:var(--accent); color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:13.5px; font-weight:700; cursor:pointer; min-height:44px;}
+  .btn:hover{background:#0b6340;}
+  .btn:disabled{background:#b9c9d6; cursor:not-allowed;}
+  .btn.secondary{background:#fff; color:var(--navy); border:1px solid var(--line);}
+  .btn.secondary:hover{background:var(--greybg);}
+  .btn.small{padding:6px 10px; min-height:36px; font-size:12.5px; margin:2px 2px 2px 0;}
+  .btn.blue{background:var(--accent2);}
+  .btn.blue:hover{background:#094f86;}
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;}
+  .toolbar .spacer{flex:1;}
+  input[type=text], input[type=number], input[type=email], select, textarea{width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:14px; font-family:inherit; background:#fff;}
+  textarea{resize:vertical;}
+  label.flabel{display:block; font-size:12.5px; font-weight:700; color:var(--mut); margin:0 0 6px;}
+  .field{margin-bottom:14px;}
+  .fieldrow{display:flex; gap:8px; align-items:flex-start;}
+  .fieldrow .grow{flex:1;}
+  .micbtn{flex:0 0 auto; width:48px; height:48px; border-radius:8px; border:1px solid var(--line); background:#fff; font-size:20px; cursor:pointer;}
+  .micbtn:hover{background:var(--greybg);}
+  .formcard{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:20px; max-width:760px;}
+  .lineitem{display:grid; grid-template-columns:1fr 90px 110px 110px 44px; gap:8px; margin-bottom:8px; align-items:center;}
+  .lineitem .lt{font-weight:700; text-align:right; padding-right:4px;}
+  .photoboxes{display:flex; gap:10px; flex-wrap:wrap;}
+  .photobox{width:150px; height:100px; border:2px dashed var(--line); border-radius:10px; background:var(--greybg); color:var(--mut); font-size:12.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; padding:8px;}
+  .photobox.on{border-style:solid; border-color:var(--accent); background:var(--greenbg); color:var(--green);}
+  .totals{background:var(--greybg); border-radius:8px; padding:12px 16px; font-size:14px; max-width:360px; margin-left:auto;}
+  .totals div{display:flex; justify-content:space-between; margin:3px 0;}
+  .totals .grand{font-weight:800; font-size:16px; color:var(--navy); border-top:1px solid var(--line); padding-top:6px;}
+  .err{background:var(--redbg); color:#7c2318; border:1px solid #f0c6c0; border-radius:8px; padding:10px 14px; margin-bottom:12px; display:none; font-size:13.5px;}
+  .chasecard{background:var(--card); border:1px solid var(--line); border-left:5px solid var(--red); border-radius:10px; padding:16px 20px; margin-bottom:16px;}
+  .chasecard h3{font-size:15px; color:var(--navy); margin-bottom:4px;}
+  .chasecard .meta{color:var(--mut); font-size:12.5px; margin-bottom:10px;}
+  .pricegrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; margin-bottom:22px;}
+  .pricecard{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:22px;}
+  .pricecard .price{font-size:34px; font-weight:800; color:var(--navy); margin:8px 0;}
+  .pricecard li{margin-left:18px; margin-bottom:5px; font-size:13.5px;}
+  .checkrow{display:flex; gap:10px; align-items:flex-start; margin:14px 0;}
+  .checkrow input{width:20px; height:20px; margin-top:2px; flex:0 0 auto;}
+  details{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; margin-bottom:10px;}
+  details summary{font-weight:700; color:var(--navy); cursor:pointer; font-size:14.5px;}
+  details p{margin-top:8px; color:var(--ink); font-size:13.5px;}
+  footer{border-top:1px solid var(--line); padding:18px 28px; color:var(--mut); font-size:12.5px; max-width:1180px; margin:0 auto;}
+  #toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:var(--navy); color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; display:none; z-index:50; max-width:90vw; text-align:center;}
+  .modalwrap{position:fixed; inset:0; background:rgba(10,20,30,.55); display:none; align-items:center; justify-content:center; z-index:40; padding:16px;}
+  .modalwrap.open{display:flex;}
+  .modal{background:#fff; border-radius:12px; max-width:560px; width:100%; padding:24px; max-height:90vh; overflow:auto;}
+  .modal h3{color:var(--navy); margin-bottom:6px;}
+  .magiclink{background:var(--greybg); border:1px dashed var(--mut); border-radius:8px; padding:10px 12px; font-size:12.5px; word-break:break-all; margin:10px 0;}
+  .sigbox{background:var(--greenbg); border:1px solid #bfe3cf; border-radius:8px; padding:10px 14px; font-size:13.5px; margin-top:10px; display:none;}
+  .empty{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:28px; text-align:center; color:var(--mut);}
+  #printArea{display:none;}
+  @media (max-width:640px){
+    .lineitem{grid-template-columns:1fr 70px 90px;}
+    .lineitem .lt{grid-column:1/3; text-align:left;}
+    td,th{padding:8px;}
+    .tablewrap{overflow-x:auto;}
+  }
+  @media print{
+    header, nav, main, footer, #toast, .modalwrap{display:none !important;}
+    #printArea{display:block; font-size:12px;}
+    #printArea table{border:1px solid #999;}
+    #printArea th, #printArea td{border:1px solid #ccc; padding:6px 8px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">Paid<span>Change</span></div>
+    <div class="sub">Change-Order-to-Cash Ledger — every extra priced, signed, billed, and paid.</div>
+  </div>
+  <div class="demo-badge">Demo — fictional sample data</div>
+</header>
+<div class="companybar">
+  <div>Company: <b>Bluepine Electrical LLC</b> (fictional demo company)</div>
+  <div>Books: <b>QuickBooks + spreadsheets</b></div>
+  <div>Crew size: <b>14</b> (in the 10–50 sweet spot)</div>
+</div>
+<nav id="mainNav">
+  <button data-view="dashboard" class="active">Dashboard</button>
+  <button data-view="log">CO Log</button>
+  <button data-view="capture">Capture T&amp;M Ticket</button>
+  <button data-view="chase">Chase</button>
+  <button data-view="pricing">Pricing &amp; Pilot</button>
+  <button data-view="help">Help</button>
+</nav>
+<main>
+<!-- ============ DASHBOARD ============ -->
+<section class="panel active" id="view-dashboard">
+  <h2>Where your change-order money stands</h2>
+  <p class="pdesc">One ledger from field ticket to paid invoice. Anything approved-but-not-billed or performed-but-not-approved turns red here — not in a spreadsheet nobody opens.</p>
+  <div class="riskbanner" id="riskBanner"></div>
+  <div class="cards" id="statCards"></div>
+  <div class="statstrip">
+    <h3>Why this exists — the numbers from the trade press</h3>
+    <ul>
+      <li><b>97%</b> of trade contractors start change work <b>before</b> it is approved.</li>
+      <li><b>77%</b> have written off change orders that were never approved or were negotiated down.</li>
+      <li><b>83%</b> of GCs still track change-order exposure on spreadsheets.</li>
+      <li>The work-to-authorisation cycle averages <b>~7 weeks</b> — and 83% of trades say it damages cash flow.</li>
+    </ul>
+    <div class="src">Source: Dodge Construction Network + Clearstory, “Optimizing the Change Order Process” SmartMarket Insight (survey of ~200 US commercial contractors, 2024).</div>
+  </div>
+  <div class="toolbar">
+    <button class="btn" id="dashCaptureBtn">Capture a T&amp;M ticket</button>
+    <button class="btn secondary" id="dashLogBtn">See the full CO log</button>
+    <button class="btn secondary" id="dashChaseBtn">See what needs chasing</button>
+  </div>
+</section>
+<!-- ============ CO LOG ============ -->
+<section class="panel" id="view-log">
+  <h2>Change-order log</h2>
+  <p class="pdesc">Every change order lives in exactly one state: priced → submitted → approved → billed → paid. Advance a state, send one for signature, print it, or export the whole log for your bookkeeper.</p>
+  <div class="toolbar">
+    <div style="min-width:180px;">
+      <label class="flabel" for="filterStatus">Filter by status</label>
+      <select id="filterStatus">
+        <option value="all">All statuses</option>
+        <option value="priced">Priced</option>
+        <option value="submitted">Submitted</option>
+        <option value="approved">Approved</option>
+        <option value="billed">Billed</option>
+        <option value="paid">Paid</option>
+      </select>
+    </div>
+    <div class="grow" style="flex:1; min-width:200px;">
+      <label class="flabel" for="searchLog">Search the log</label>
+      <div class="fieldrow">
+        <div class="grow"><input type="text" id="searchLog" placeholder="Job, customer, description…"></div>
+        <button class="micbtn" id="micSearch" title="Dictate search" aria-label="Dictate search">🎤</button>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn blue" id="exportCsvBtn">Export CSV</button>
+    <button class="btn secondary" id="printLogBtn">Print / PDF log</button>
+  </div>
+  <div class="tablewrap">
+  <table id="logTable">
+    <thead><tr>
+      <th>CO #</th><th>Job / Customer</th><th>Change</th><th>Amount</th><th>Status</th><th>Days in state</th><th>Ball in court</th><th>Actions</th>
+    </tr></thead>
+    <tbody id="logBody"></tbody>
+    <tfoot><tr><td colspan="3" style="font-weight:700;">Open total (unpaid)</td><td id="openTotal" style="font-weight:800;"></td><td colspan="4"></td></tr></tfoot>
+  </table>
+  </div>
+  <div class="empty" id="logEmpty" style="display:none;">No change orders match. Clear the filter/search, or capture a ticket to add one.</div>
+  <div class="toolbar" style="margin-top:16px;">
+    <button class="btn secondary" id="resetDemoBtn">Reset demo data</button>
+    <button class="btn secondary" id="clearDemoBtn">Clear demo data</button>
+  </div>
+</section>
+<!-- ============ CAPTURE ============ -->
+<section class="panel" id="view-capture">
+  <h2>Capture a T&amp;M ticket in the field</h2>
+  <p class="pdesc">Price the extra while you are standing in front of it — labor, materials, markup — attach photo placeholders, and it lands in the log as a priced change order, ready to send for a signature.</p>
+  <div class="formcard">
+    <div class="err" id="capErr"></div>
+    <div class="field">
+      <label class="flabel" for="capJob">Job</label>
+      <select id="capJob">
+        <option>Riverside Clinic TI</option>
+        <option>Harbor Pointe Hotel — Phase 2</option>
+        <option>Elm Street Dental Fit-Out</option>
+        <option>Westfield Retail Shell</option>
+        <option>Northgate Logistics Office</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="flabel" for="capCustomer">Customer / GC who must approve</label>
+      <div class="fieldrow">
+        <div class="grow"><input type="text" id="capCustomer" placeholder="e.g. Northgate Builders (sample)"></div>
+        <button class="micbtn" data-mic="capCustomer" title="Dictate" aria-label="Dictate customer">🎤</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="flabel" for="capDesc">What changed? (describe the extra work)</label>
+      <div class="fieldrow">
+        <div class="grow"><textarea id="capDesc" rows="3" placeholder="e.g. Added a dedicated 20A circuit for the new imaging equipment, per owner request 11/4."></textarea></div>
+        <button class="micbtn" data-mic="capDesc" title="Dictate" aria-label="Dictate description">🎤</button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="flabel">Labor &amp; materials lines</label>
+      <div id="lineItems"></div>
+      <button class="btn secondary small" id="addLineBtn" type="button">+ Add a line</button>
+    </div>
+    <div class="field" style="max-width:220px;">
+      <label class="flabel" for="capMarkup">Markup %</label>
+      <input type="number" id="capMarkup" value="15" min="0" max="200" step="1">
+    </div>
+    <div class="field">
+      <label class="flabel">Photos of the condition (demo placeholders)</label>
+      <div class="photoboxes" id="photoBoxes">
+        <button type="button" class="photobox" data-photo="1">📷 Photo 1<br>tap to attach</button>
+        <button type="button" class="photobox" data-photo="2">📷 Photo 2<br>tap to attach</button>
+        <button type="button" class="photobox" data-photo="3">📷 Photo 3<br>tap to attach</button>
+      </div>
+      <div style="color:var(--mut); font-size:12.5px; margin-top:6px;">In the live product these are real camera photos, attached to the ticket the customer signs.</div>
+    </div>
+    <div class="totals" id="capTotals">
+      <div><span>Subtotal</span><span id="ctSub">$0.00</span></div>
+      <div><span>Markup</span><span id="ctMarkup">$0.00</span></div>
+      <div class="grand"><span>Priced total</span><span id="ctTotal">$0.00</span></div>
+    </div>
+    <div class="toolbar" style="margin-top:16px;">
+      <button class="btn" id="priceBtn">Price this change order</button>
+      <button class="btn secondary" id="clearFormBtn">Clear form</button>
+    </div>
+  </div>
+</section>
+<!-- ============ CHASE ============ -->
+<section class="panel" id="view-chase">
+  <h2>Chase list — money sitting still</h2>
+  <p class="pdesc">PaidChange flags anything stuck: submitted 7+ days with no approval, approved 5+ days but never billed, or billed 30+ days and still unpaid. Each one gets a ready-to-send chase email.</p>
+  <div id="chaseList"></div>
+  <div class="empty" id="chaseEmpty" style="display:none;">Nothing is stalled right now. Every open change order is moving.</div>
+</section>
+<!-- ============ PRICING & PILOT ============ -->
+<section class="panel" id="view-pricing">
+  <h2>Pricing — flat, per company, no per-seat games</h2>
+  <p class="pdesc">Built for a 10–50-person trade contractor or small GC running QuickBooks + Excel. Recovering one written-off change order pays for a year.</p>
+  <div class="pricegrid">
+    <div class="pricecard">
+      <div class="lbl" style="font-size:12px; text-transform:uppercase; letter-spacing:.7px; color:var(--mut); font-weight:700;">PaidChange subscription</div>
+      <div class="price">$249<span style="font-size:16px; color:var(--mut);">/mo flat per company</span></div>
+      <ul>
+        <li>Unlimited change orders, unlimited invited signers/viewers</li>
+        <li>Field T&amp;M capture with photos, priced on the spot</li>
+        <li>Customer signature by email link — no account for them</li>
+        <li>Live log: priced → submitted → approved → billed → paid</li>
+        <li>Automatic chase list for stalled approvals and approved-but-unbilled work</li>
+        <li>CSV/PDF export your bookkeeper drops into QuickBooks</li>
+      </ul>
+    </div>
+    <div class="pricecard">
+      <div class="lbl" style="font-size:12px; text-transform:uppercase; letter-spacing:.7px; color:var(--mut); font-weight:700;">Start here — paid pilot</div>
+      <div class="price">$1,950<span style="font-size:16px; color:var(--mut);"> one-time</span></div>
+      <ul>
+        <li><b>12-month change-order recovery audit:</b> we rebuild your last 12 months of change-order logs from your spreadsheets and email</li>
+        <li>You see, in dollars, what was performed-but-never-approved and approved-but-never-billed</li>
+        <li>Then PaidChange runs live on your current jobs for 30 days</li>
+        <li>One recovered $2,500 change order covers the pilot — and 10 months of subscription</li>
+      </ul>
+    </div>
+  </div>
+  <div class="formcard">
+    <h3 style="color:var(--navy); margin-bottom:6px;">Request the $1,950 recovery-audit pilot</h3>
+    <p style="color:var(--mut); font-size:13px; margin-bottom:14px;">This demo button opens your own email app with the request pre-written — nothing is sent until you press send there.</p>
+    <div class="field">
+      <label class="flabel" for="pilotName">Your name</label>
+      <input type="text" id="pilotName" placeholder="Your name">
+    </div>
+    <div class="field">
+      <label class="flabel" for="pilotCompany">Company</label>
+      <input type="text" id="pilotCompany" placeholder="Company name">
+    </div>
+    <div class="field">
+      <label class="flabel" for="pilotEmail">Work email</label>
+      <input type="email" id="pilotEmail" placeholder="you@company.com">
+    </div>
+    <div class="checkrow">
+      <input type="checkbox" id="pilotTerms">
+      <label for="pilotTerms">I understand the pilot is a one-time $1,950 change-order recovery audit (last 12 months rebuilt from my spreadsheets/email, plus 30 days live on current jobs), and that email is the contact method — no sales calls.</label>
+    </div>
+    <button class="btn" id="pilotSubmit" disabled>Request the pilot</button>
+    <div id="pilotMsg" style="margin-top:10px; font-size:13px; color:var(--green);"></div>
+  </div>
+</section>
+<!-- ============ HELP ============ -->
+<section class="panel" id="view-help">
+  <h2>Help</h2>
+  <p class="pdesc">Plain answers for the main jobs. Still stuck? Email us — a person reads it.</p>
+  <details>
+    <summary>How do I capture extra work in the field?</summary>
+    <p>Open <b>Capture T&amp;M Ticket</b>, pick the job, name who must approve, describe the change, and add labor/materials lines. Your markup is applied automatically. Tap the photo boxes to attach condition photos, then <b>Price this change order</b> — it lands in the CO Log as “Priced.”</p>
+  </details>
+  <details>
+    <summary>How does the customer sign without an account?</summary>
+    <p>In the CO Log, tap <b>Send for signature</b> on a priced change order. Your customer gets an email link (a “magic link”) that opens the priced change order on their phone — no app, no account, no password. They type their name, check the agreement box, and sign. The log flips to “Approved” with their name and the time.</p>
+  </details>
+  <details>
+    <summary>What do the five states mean?</summary>
+    <p><b>Priced</b> — captured and priced, not yet sent. <b>Submitted</b> — sent to the customer/GC, awaiting approval. <b>Approved</b> — signed; safe to do the work, must still be billed. <b>Billed</b> — on an invoice/pay application. <b>Paid</b> — money in. PaidChange exists so nothing dies quietly between those states.</p>
+  </details>
+  <details>
+    <summary>How does chasing work?</summary>
+    <p>The <b>Chase</b> tab lists anything stuck — submitted 7+ days, approved-but-unbilled 5+ days, billed-unpaid 30+ days — each with a ready-to-send email you can edit. Mark it chased and the clock resets.</p>
+  </details>
+  <details>
+    <summary>How do I get this into QuickBooks?</summary>
+    <p>Use <b>Export CSV</b> in the CO Log: one row per change order with job, customer, amount, and state — your bookkeeper imports or keys it into the next QuickBooks invoice, and <b>Print / PDF log</b> gives you the paper copy. Direct QuickBooks Online sync is a later phase; the export is the bridge today.</p>
+  </details>
+  <details>
+    <summary>Where does my data live?</summary>
+    <p>In this demo, everything lives in your own browser on this device (local storage) — sample data is fictional. Use <b>Reset demo data</b> in the CO Log to restore the samples, or <b>Clear demo data</b> to empty the ledger. In the live product your company ledger is backed up and exportable at any time.</p>
+  </details>
+  <div class="toolbar" style="margin-top:18px;">
+    <a class="btn" id="emailUsBtn" href="mailto:whitewolfbackoffice@gmail.com?subject=PaidChange%20help%20%E2%80%94%20v0.1.0-demo&amp;body=Tell%20us%20what%20you%20were%20trying%20to%20do%20and%20what%20happened%3A%0A%0A">Email us</a>
+  </div>
+  <p style="color:var(--mut); font-size:13px;">The Email us button opens your own mail app, pre-addressed to our back office. Nothing is sent until you press send there.</p>
+</section>
+</main>
+<footer>
+  <b>PaidChange</b> v0.1.0-demo · This is a working demo with fictional sample companies, people, and dollar figures — no real customer data. Contact is by email only: whitewolfbackoffice@gmail.com. PaidChange is a product in pilot; pricing shown is the pilot offer.
+</footer>
+<div id="toast" role="status"></div>
+<!-- ============ SIGN MODAL ============ -->
+<div class="modalwrap" id="signModal">
+  <div class="modal">
+    <h3>Send for signature — email magic link (simulated)</h3>
+    <p style="color:var(--mut); font-size:13px;">In the live product, your customer receives this link by email and signs on their phone — no account, no app. Here, the whole flow is simulated so you can see exactly what they see.</p>
+    <div class="magiclink" id="magicLinkText"></div>
+    <div class="toolbar">
+      <button class="btn secondary small" id="copyLinkBtn">Copy link</button>
+      <button class="btn small" id="openLinkBtn">Open link as the customer</button>
+    </div>
+    <div id="signerSide" style="display:none; border-top:1px solid var(--line); margin-top:14px; padding-top:14px;">
+      <h3 id="signTitle">Review &amp; sign</h3>
+      <p id="signSummary" style="font-size:13.5px; margin:8px 0;"></p>
+      <div class="field">
+        <label class="flabel" for="signerName">Signer name</label>
+        <div class="fieldrow">
+          <div class="grow"><input type="text" id="signerName" placeholder="Full name"></div>
+          <button class="micbtn" data-mic="signerName" title="Dictate" aria-label="Dictate signer name">🎤</button>
+        </div>
+      </div>
+      <div class="checkrow">
+        <input type="checkbox" id="signTerms">
+        <label for="signTerms">I have reviewed this change order and agree to the price shown. I authorise the work to proceed and be billed at this amount.</label>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="signApproveBtn" disabled>Sign &amp; approve</button>
+        <button class="btn secondary" id="signCancelBtn">Cancel</button>
+      </div>
+      <div class="sigbox" id="sigBox"></div>
+    </div>
+    <div class="toolbar" style="margin-top:14px;">
+      <button class="btn secondary" id="signCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+<div id="printArea"></div>
+<script>
+"use strict";
+var LS_KEY = "paidchange_demo_v1";
+var STATUSES = ["priced","submitted","approved","billed","paid"];
+var NEXT = {priced:"submitted", submitted:"approved", approved:"billed", billed:"paid"};
+var ADV_LABEL = {priced:"Submit", submitted:"Mark approved", approved:"Mark billed", billed:"Mark paid"};
+var COURT = {priced:"You — send it", submitted:"Customer / GC", approved:"You — bill it", billed:"Customer — pay", paid:"Done"};
+
+function daysAgo(n){ var d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+function seedData(){
+  return { seq: 1051, cos: [
+    {id:1, num:"CO-1041", job:"Riverside Clinic TI", customer:"Northgate Builders (sample)", desc:"Added 6 recessed lights in exam rooms", amount:1840, status:"paid", statusSince:daysAgo(2), signedBy:"D. Mercer (sample)", signedAt:daysAgo(20), lastChase:null},
+    {id:2, num:"CO-1042", job:"Harbor Pointe Hotel — Phase 2", customer:"Meridian Builders (sample)", desc:"Reroute conduit — panel conflict found in wall", amount:3275, status:"billed", statusSince:daysAgo(34), signedBy:"S. Okafor (sample)", signedAt:daysAgo(41), lastChase:null},
+    {id:3, num:"CO-1043", job:"Elm Street Dental Fit-Out", customer:"Owner direct (sample)", desc:"Extra outlets + data drops in operatories", amount:960, status:"approved", statusSince:daysAgo(9), signedBy:"Dr. L. Tran (sample)", signedAt:daysAgo(9), lastChase:null},
+    {id:4, num:"CO-1044", job:"Riverside Clinic TI", customer:"Northgate Builders (sample)", desc:"Dedicated 20A circuit for imaging equipment", amount:2410, status:"submitted", statusSince:daysAgo(12), signedBy:null, signedAt:null, lastChase:null},
+    {id:5, num:"CO-1045", job:"Westfield Retail Shell", customer:"Meridian Builders (sample)", desc:"After-hours rough-in acceleration", amount:5620, status:"submitted", statusSince:daysAgo(3), signedBy:null, signedAt:null, lastChase:null},
+    {id:6, num:"CO-1046", job:"Harbor Pointe Hotel — Phase 2", customer:"Meridian Builders (sample)", desc:"Fire alarm device adds per AHJ review", amount:1150, status:"priced", statusSince:daysAgo(1), signedBy:null, signedAt:null, lastChase:null},
+    {id:7, num:"CO-1047", job:"Elm Street Dental Fit-Out", customer:"Owner direct (sample)", desc:"Lighting control upgrade, waiting rooms", amount:2030, status:"priced", statusSince:daysAgo(0), signedBy:null, signedAt:null, lastChase:null},
+    {id:8, num:"CO-1048", job:"Northgate Logistics Office", customer:"Northgate Builders (sample)", desc:"Temp power for GC site trailer", amount:740, status:"paid", statusSince:daysAgo(6), signedBy:"D. Mercer (sample)", signedAt:daysAgo(15), lastChase:null},
+    {id:9, num:"CO-1049", job:"Westfield Retail Shell", customer:"Meridian Builders (sample)", desc:"Underground conduit repair — rock excavation", amount:4480, status:"approved", statusSince:daysAgo(2), signedBy:"S. Okafor (sample)", signedAt:daysAgo(2), lastChase:null},
+    {id:10, num:"CO-1050", job:"Riverside Clinic TI", customer:"Northgate Builders (sample)", desc:"Nurse-call system add, wing B", amount:1690, status:"billed", statusSince:daysAgo(6), signedBy:"D. Mercer (sample)", signedAt:daysAgo(13), lastChase:null}
+  ]};
+}
+var state = load();
+function load(){
+  try{ var raw = localStorage.getItem(LS_KEY); if(raw){ var p = JSON.parse(raw); if(p && p.cos) return p; } }catch(e){}
+  var s = seedData(); save(s); return s;
+}
+function save(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s||state)); }catch(e){} }
+function esc(v){ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function money(n){ return "$" + Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function daysInState(co){ var t = new Date(); t.setHours(0,0,0,0); var s = new Date(co.statusSince+"T00:00:00"); return Math.max(0, Math.round((t - s)/86400000)); }
+function isStalled(co){
+  var d = daysInState(co);
+  if(co.status==="submitted" && d>=7) return {type:"approval", days:d};
+  if(co.status==="approved" && d>=5) return {type:"unbilled", days:d};
+  if(co.status==="billed" && d>=30) return {type:"unpaid", days:d};
+  return null;
+}
+function toast(msg){ var t = document.getElementById("toast"); t.textContent = msg; t.style.display="block"; clearTimeout(t._h); t._h = setTimeout(function(){ t.style.display="none"; }, 3400); }
+function $(id){ return document.getElementById(id); }
+
+/* ---------- navigation ---------- */
+function showView(name){
+  var panels = document.querySelectorAll("section.panel");
+  for(var i=0;i<panels.length;i++){ panels[i].classList.toggle("active", panels[i].id==="view-"+name); }
+  var btns = document.querySelectorAll("#mainNav button");
+  for(var j=0;j<btns.length;j++){ btns[j].classList.toggle("active", btns[j].getAttribute("data-view")===name); }
+  if(name==="dashboard") renderDashboard();
+  if(name==="log") renderLog();
+  if(name==="chase") renderChase();
+  window.scrollTo(0,0);
+}
+var navBtns = document.querySelectorAll("#mainNav button");
+for(var n=0;n<navBtns.length;n++){ navBtns[n].addEventListener("click", function(){ showView(this.getAttribute("data-view")); }); }
+$("dashCaptureBtn").addEventListener("click", function(){ showView("capture"); });
+$("dashLogBtn").addEventListener("click", function(){ showView("log"); });
+$("dashChaseBtn").addEventListener("click", function(){ showView("chase"); });
+
+/* ---------- dashboard ---------- */
+function sums(){
+  var s = {priced:0, submitted:0, approved:0, billed:0, paid:0};
+  for(var i=0;i<state.cos.length;i++){ s[state.cos[i].status] += Number(state.cos[i].amount)||0; }
+  return s;
+}
+function renderDashboard(){
+  var s = sums();
+  var stalled = state.cos.filter(function(c){ return isStalled(c); });
+  var atRisk = stalled.reduce(function(a,c){ return a + (Number(c.amount)||0); }, 0);
+  var rb = $("riskBanner");
+  if(stalled.length){
+    rb.style.display = "block";
+    rb.innerHTML = "<b>" + money(atRisk) + " is sitting still</b> across " + stalled.length + " stalled change order" + (stalled.length>1?"s":"") + " — submitted and waiting, approved but never billed, or billed and unpaid. Open the <b>Chase</b> tab: each one already has a chase email written.";
+  } else {
+    rb.style.display = "block";
+    rb.style.background = "var(--greenbg)"; rb.style.borderColor = "#bfe3cf"; rb.style.color = "#14532d";
+    rb.innerHTML = "<b>Nothing is stalled.</b> Every open change order is moving through the pipeline.";
+  }
+  var cards = [
+    {lbl:"Priced — not yet submitted", val:s.priced, note:"Captured in the field. Send for signature before the work starts.", cls:""},
+    {lbl:"Submitted — awaiting approval", val:s.submitted, note:"Ball is in the customer's court. 7+ days here = chase.", cls:""},
+    {lbl:"Approved — not yet billed", val:s.approved, note:"Signed and safe to do — but money is not real until it is billed.", cls:""},
+    {lbl:"Billed — awaiting payment", val:s.billed, note:"On an invoice / pay app. 30+ days here = chase.", cls:""},
+    {lbl:"Paid — collected", val:s.paid, note:"Change-order money actually in. This is the number that matters.", cls:"good"}
+  ];
+  $("statCards").innerHTML = cards.map(function(c){
+    return '<div class="card ' + c.cls + '"><div class="lbl">' + c.lbl + '</div><div class="big">' + money(c.val) + '</div><div class="note">' + c.note + '</div></div>';
+  }).join("");
+}
+
+/* ---------- CO log ---------- */
+function renderLog(){
+  var f = $("filterStatus").value;
+  var q = ($("searchLog").value || "").toLowerCase();
+  var rows = state.cos.filter(function(c){
+    if(f!=="all" && c.status!==f) return false;
+    if(q){ var hay = (c.num+" "+c.job+" "+c.customer+" "+c.desc+" "+c.status).toLowerCase(); if(hay.indexOf(q)<0) return false; }
+    return true;
+  });
+  var body = $("logBody");
+  body.innerHTML = rows.map(function(c){
+    var d = daysInState(c); var st = isStalled(c);
+    var acts = "";
+    if(c.status!=="paid"){ acts += '<button class="btn small" data-act="advance" data-id="' + c.id + '">' + ADV_LABEL[c.status] + '</button>'; }
+    if(c.status==="priced" || c.status==="submitted"){ acts += '<button class="btn small blue" data-act="sign" data-id="' + c.id + '">Send for signature</button>'; }
+    if(st){ acts += '<button class="btn small secondary" data-act="chase" data-id="' + c.id + '">Chase</button>'; }
+    acts += '<button class="btn small secondary" data-act="print" data-id="' + c.id + '">Print</button>';
+    if(c.signedBy){ acts += '<div style="font-size:11.5px; color:var(--mut); margin-top:4px;">Signed by ' + esc(c.signedBy) + ' · ' + esc(c.signedAt) + '</div>'; }
+    return "<tr><td><b>" + esc(c.num) + "</b></td><td>" + esc(c.job) + "<br><span style='color:var(--mut); font-size:12.5px;'>" + esc(c.customer) + "</span></td><td>" + esc(c.desc) + "</td><td><b>" + money(c.amount) + "</b></td>" +
+      '<td><span class="pill ' + c.status + '">' + c.status + "</span></td>" +
+      '<td class="' + (st ? "stalled" : "") + '">' + d + (st ? " ⚠ stalled" : "") + "</td>" +
+      "<td>" + COURT[c.status] + "</td><td>" + acts + "</td></tr>";
+  }).join("");
+  $("logEmpty").style.display = rows.length ? "none" : "block";
+  $("logTable").style.display = rows.length ? "" : "none";
+  var open = state.cos.filter(function(c){ return c.status!=="paid"; }).reduce(function(a,c){ return a + (Number(c.amount)||0); }, 0);
+  $("openTotal").textContent = money(open);
+  var btns = body.querySelectorAll("button[data-act]");
+  for(var i=0;i<btns.length;i++){ btns[i].addEventListener("click", onLogAction); }
+}
+function findCo(id){ for(var i=0;i<state.cos.length;i++){ if(state.cos[i].id===Number(id)) return state.cos[i]; } return null; }
+function onLogAction(){
+  var act = this.getAttribute("data-act"); var co = findCo(this.getAttribute("data-id")); if(!co) return;
+  if(act==="advance"){
+    co.status = NEXT[co.status]; co.statusSince = daysAgo(0); save(); renderLog();
+    toast(co.num + " moved to " + co.status + ".");
+  } else if(act==="sign"){ openSign(co); }
+  else if(act==="chase"){ showView("chase"); }
+  else if(act==="print"){ printOne(co); }
+}
+$("filterStatus").addEventListener("change", renderLog);
+$("searchLog").addEventListener("input", renderLog);
+$("exportCsvBtn").addEventListener("click", function(){
+  var lines = ["CO number,Job,Customer,Description,Amount,Status,Days in status,Signed by,Signed date"];
+  state.cos.forEach(function(c){
+    function q(v){ return '"' + String(v==null?"":v).replace(/"/g,'""') + '"'; }
+    lines.push([q(c.num),q(c.job),q(c.customer),q(c.desc),Number(c.amount).toFixed(2),q(c.status),daysInState(c),q(c.signedBy||""),q(c.signedAt||"")].join(","));
+  });
+  var blob = new Blob([lines.join("\n")], {type:"text/csv"});
+  var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "paidchange-co-log.csv"; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+  toast("CSV exported — " + state.cos.length + " change orders, ready for QuickBooks.");
+});
+function printHtml(title, inner){ $("printArea").innerHTML = "<h2>" + title + "</h2>" + inner; window.print(); }
+$("printLogBtn").addEventListener("click", function(){
+  var rows = state.cos.map(function(c){ return "<tr><td>" + esc(c.num) + "</td><td>" + esc(c.job) + "</td><td>" + esc(c.customer) + "</td><td>" + esc(c.desc) + "</td><td>" + money(c.amount) + "</td><td>" + c.status + "</td></tr>"; }).join("");
+  printHtml("PaidChange — Change Order Log (demo, fictional data)", "<table><thead><tr><th>CO #</th><th>Job</th><th>Customer</th><th>Change</th><th>Amount</th><th>Status</th></tr></thead><tbody>" + rows + "</tbody></table>");
+});
+function printOne(co){
+  printHtml("Change Order " + co.num + " (demo, fictional data)",
+    "<p><b>Job:</b> " + esc(co.job) + "<br><b>Customer/GC:</b> " + esc(co.customer) + "<br><b>Change:</b> " + esc(co.desc) + "<br><b>Amount:</b> " + money(co.amount) + "<br><b>Status:</b> " + co.status + (co.signedBy ? "<br><b>Signed by:</b> " + esc(co.signedBy) + " on " + esc(co.signedAt) : "") + "</p>");
+}
+$("resetDemoBtn").addEventListener("click", function(){ state = seedData(); save(); renderLog(); toast("Demo data reset to the original samples."); });
+$("clearDemoBtn").addEventListener("click", function(){ state = {seq:1051, cos:[]}; save(); renderLog(); toast("Demo ledger cleared. Capture a ticket to add a change order."); });
+
+/* ---------- signature (magic link simulation) ---------- */
+var signTarget = null;
+function openSign(co){
+  signTarget = co;
+  $("magicLinkText").textContent = "https://paidchange.example/sign/" + co.num.toLowerCase() + "?t=demo-token-" + co.id + "  (simulated link — in the live product this is emailed to " + co.customer + ")";
+  $("signerSide").style.display = "none";
+  $("sigBox").style.display = "none";
+  $("signerName").value = ""; $("signTerms").checked = false; $("signApproveBtn").disabled = true;
+  $("signModal").classList.add("open");
+}
+$("openLinkBtn").addEventListener("click", function(){
+  if(!signTarget) return;
+  $("signSummary").innerHTML = "<b>" + esc(signTarget.num) + "</b> · " + esc(signTarget.job) + "<br>" + esc(signTarget.desc) + "<br><b>Price: " + money(signTarget.amount) + "</b> — billed by Bluepine Electrical LLC (fictional).";
+  $("signerSide").style.display = "block";
+});
+$("copyLinkBtn").addEventListener("click", function(){
+  var txt = $("magicLinkText").textContent;
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(function(){ toast("Link copied."); }, function(){ toast("Copy not available in this browser — the link is shown above."); }); }
+  else { toast("Copy not available in this browser — the link is shown above."); }
+});
+function signGate(){ $("signApproveBtn").disabled = !($("signTerms").checked && $("signerName").value.trim().length>1); }
+$("signTerms").addEventListener("change", signGate);
+$("signerName").addEventListener("input", signGate);
+$("signApproveBtn").addEventListener("click", function(){
+  if(!signTarget) return;
+  signTarget.status = "approved"; signTarget.statusSince = daysAgo(0);
+  signTarget.signedBy = $("signerName").value.trim(); signTarget.signedAt = daysAgo(0);
+  save();
+  var sb = $("sigBox"); sb.style.display = "block";
+  sb.innerHTML = "✓ <b>Signed.</b> " + esc(signTarget.num) + " approved by " + esc(signTarget.signedBy) + " just now. The CO log now shows it as <b>Approved</b> — safe to do the work, and flagged until it is billed.";
+  renderLog(); toast(signTarget.num + " signed and approved.");
+});
+$("signCancelBtn").addEventListener("click", function(){ $("signerSide").style.display="none"; });
+$("signCloseBtn").addEventListener("click", function(){ $("signModal").classList.remove("open"); });
+
+/* ---------- capture ---------- */
+function lineRow(){
+  var div = document.createElement("div"); div.className = "lineitem";
+  div.innerHTML = '<input type="text" class="li-desc" placeholder="Line: labor hrs, material, equipment…">' +
+    '<input type="number" class="li-qty" placeholder="Qty" min="0" step="0.5" value="1">' +
+    '<input type="number" class="li-rate" placeholder="Rate $" min="0" step="1" value="0">' +
+    '<div class="lt">$0.00</div>' +
+    '<button type="button" class="btn secondary small li-del" aria-label="Remove line">✕</button>';
+  var inputs = div.querySelectorAll("input");
+  for(var i=0;i<inputs.length;i++){ inputs[i].addEventListener("input", calcCapture); }
+  div.querySelector(".li-del").addEventListener("click", function(){ div.remove(); calcCapture(); });
+  return div;
+}
+function calcCapture(){
+  var sub = 0;
+  var rows = document.querySelectorAll("#lineItems .lineitem");
+  rows.forEach(function(r){
+    var q = parseFloat(r.querySelector(".li-qty").value)||0;
+    var rate = parseFloat(r.querySelector(".li-rate").value)||0;
+    var t = q*rate; r.querySelector(".lt").textContent = money(t); sub += t;
+  });
+  var mk = parseFloat($("capMarkup").value)||0;
+  var mAmt = sub * mk/100;
+  $("ctSub").textContent = money(sub);
+  $("ctMarkup").textContent = money(mAmt);
+  $("ctTotal").textContent = money(sub + mAmt);
+  return sub + mAmt;
+}
+$("addLineBtn").addEventListener("click", function(){ $("lineItems").appendChild(lineRow()); });
+$("capMarkup").addEventListener("input", calcCapture);
+var photoBoxes = document.querySelectorAll(".photobox");
+photoBoxes.forEach(function(b){ b.addEventListener("click", function(){
+  b.classList.toggle("on");
+  var on = b.classList.contains("on");
+  b.innerHTML = on ? "✓ Photo " + b.getAttribute("data-photo") + "<br>attached (demo)" : "📷 Photo " + b.getAttribute("data-photo") + "<br>tap to attach";
+}); });
+$("priceBtn").addEventListener("click", function(){
+  var err = $("capErr"); err.style.display = "none";
+  var desc = $("capDesc").value.trim();
+  var cust = $("capCustomer").value.trim();
+  var total = calcCapture();
+  var problems = [];
+  if(!desc) problems.push("Describe the change — the customer signs what you write here.");
+  if(!cust) problems.push("Name the customer/GC who must approve it.");
+  if(!(total>0)) problems.push("Add at least one line with a quantity and a rate above $0.");
+  if(problems.length){ err.textContent = problems.join(" "); err.style.display = "block"; return; }
+  var co = { id: Date.now(), num: "CO-" + (state.seq++), job: $("capJob").value, customer: cust, desc: desc, amount: Math.round(total*100)/100, status:"priced", statusSince: daysAgo(0), signedBy:null, signedAt:null, lastChase:null };
+  state.cos.push(co); save();
+  toast(co.num + " priced at " + money(co.amount) + " and added to the log.");
+  showView("log");
+});
+$("clearFormBtn").addEventListener("click", function(){
+  $("capDesc").value = ""; $("capCustomer").value = "";
+  $("lineItems").innerHTML = ""; $("lineItems").appendChild(lineRow());
+  photoBoxes.forEach(function(b){ b.classList.remove("on"); b.innerHTML = "📷 Photo " + b.getAttribute("data-photo") + "<br>tap to attach"; });
+  calcCapture(); toast("Form cleared.");
+});
+$("lineItems").appendChild(lineRow());
+calcCapture();
+
+/* ---------- chase ---------- */
+function chaseEmail(co, st){
+  if(st.type==="approval"){ return "Hi — following up on change order " + co.num + " (" + co.desc + ") for " + money(co.amount) + ", submitted " + st.days + " days ago. The crew is ready to proceed the moment it is approved; approving now keeps it off the critical path. You can review and sign from the link in the original email — it takes under a minute and needs no account. If the price needs discussion, reply here and we will work it out before anyone picks up a tool."; }
+  if(st.type==="unbilled"){ return "Internal note — " + co.num + " (" + co.desc + ", " + money(co.amount) + ") was approved " + st.days + " days ago and has not been billed yet. Add it to the next invoice / pay application today; approved-but-unbilled work is the easiest money in this business to lose."; }
+  return "Hi — a friendly note that change order " + co.num + " (" + co.desc + ") for " + money(co.amount) + " was billed " + st.days + " days ago and is still open on our side. If payment is already in motion, thank you — a quick reply with the date saves us both a second follow-up. If something is holding it, tell us what you need and we will get it to you today.";
+}
+function renderChase(){
+  var list = $("chaseList");
+  var stalled = state.cos.filter(function(c){ return isStalled(c); });
+  $("chaseEmpty").style.display = stalled.length ? "none" : "block";
+  list.innerHTML = stalled.map(function(c){
+    var st = isStalled(c);
+    var kind = st.type==="approval" ? "Awaiting approval" : (st.type==="unbilled" ? "Approved — never billed" : "Billed — unpaid");
+    return '<div class="chasecard"><h3>' + c.num + ' · ' + money(c.amount) + ' · <span style="color:var(--red);">' + kind + ' — ' + st.days + ' days</span></h3>' +
+      '<div class="meta">' + esc(c.job) + ' · ' + esc(c.customer) + ' · ' + esc(c.desc) + (c.lastChase ? ' · Last chased ' + c.lastChase : ' · Never chased') + '</div>' +
+      '<label class="flabel" for="chase-' + c.id + '">Chase email (edit freely)</label>' +
+      '<textarea id="chase-' + c.id + '" rows="5">' + esc(chaseEmail(c, st)) + '</textarea>' +
+      '<div class="toolbar" style="margin-top:10px;">' +
+      '<button class="btn small" data-chase="copy" data-id="' + c.id + '">Copy email</button>' +
+      '<button class="btn small secondary" data-chase="mark" data-id="' + c.id + '">Mark as chased</button>' +
+      (c.status!=="paid" ? '<button class="btn small secondary" data-chase="advance" data-id="' + c.id + '">' + ADV_LABEL[c.status] + '</button>' : '') +
+      '</div></div>';
+  }).join("");
+  var btns = list.querySelectorAll("button[data-chase]");
+  for(var i=0;i<btns.length;i++){ btns[i].addEventListener("click", function(){
+    var co = findCo(this.getAttribute("data-id")); if(!co) return;
+    var act = this.getAttribute("data-chase");
+    if(act==="copy"){
+      var ta = $("chase-" + co.id);
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value).then(function(){ toast("Chase email copied — paste it into your email app."); }, function(){ ta.select(); toast("Copy blocked — text selected, copy it manually."); }); }
+      else { ta.select(); toast("Text selected — copy it into your email app."); }
+    } else if(act==="mark"){ co.lastChase = daysAgo(0); co.statusSince = daysAgo(0); save(); renderChase(); toast(co.num + " marked chased — its stall clock reset."); }
+    else if(act==="advance"){ co.status = NEXT[co.status]; co.statusSince = daysAgo(0); save(); renderChase(); toast(co.num + " moved to " + co.status + "."); }
+  }); }
+}
+
+/* ---------- pilot form ---------- */
+function pilotGate(){ $("pilotSubmit").disabled = !$("pilotTerms").checked; }
+$("pilotTerms").addEventListener("change", pilotGate);
+$("pilotSubmit").addEventListener("click", function(){
+  var name = $("pilotName").value.trim() || "(name)";
+  var comp = $("pilotCompany").value.trim() || "(company)";
+  var email = $("pilotEmail").value.trim() || "(email)";
+  var subject = encodeURIComponent("PaidChange pilot request — " + comp);
+  var body = encodeURIComponent("Hi — I want the $1,950 PaidChange change-order recovery audit pilot.\n\nName: " + name + "\nCompany: " + comp + "\nEmail: " + email + "\n\nI understand it rebuilds my last 12 months of change orders and runs live on current jobs for 30 days. Email is my preferred contact method.");
+  window.location.href = "mailto:whitewolfbackoffice@gmail.com?subject=" + subject + "&body=" + body;
+  $("pilotMsg").textContent = "Your email app should now be open with the request pre-written — just press send there. We reply by email.";
+});
+
+/* ---------- voice entry (mic buttons, one press) ---------- */
+function dictate(targetId){
+  var el = $(targetId); if(!el) return;
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast("Voice isn't available on this device/browser — typing works as always."); return; }
+  try{
+    var r = new SR(); r.lang = "en-US"; r.interimResults = false;
+    r.onresult = function(ev){ var txt = ev.results[0][0].transcript; el.value = (el.value ? el.value + " " : "") + txt; el.dispatchEvent(new Event("input")); };
+    r.onerror = function(){ toast("Didn't catch that — try again or type it."); };
+    r.start();
+  }catch(e){ toast("Voice isn't available on this device/browser — typing works as always."); }
+}
+var micBtns = document.querySelectorAll("[data-mic]");
+micBtns.forEach(function(b){ b.addEventListener("click", function(){ dictate(b.getAttribute("data-mic")); }); });
+$("micSearch").addEventListener("click", function(){ dictate("searchLog"); });
+
+/* ---------- first render ---------- */
+renderDashboard();
+renderLog();
+</script>
+</body>
+</html>
